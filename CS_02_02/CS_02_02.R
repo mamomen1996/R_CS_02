@@ -1,0 +1,214 @@
+# Case-Study Title: Story Telling with Data (decision making and reasoning based-on data visualization)
+# Data Analysis methodology: CRISP-DM
+# Dataset: Human Development Index and Corruption Perception Index scores for several countries (Economist magazine paper)
+# Case Goal: Try to replicate CS_02_02_1.png: relation between corruption and human resources development index in each country
+
+
+### Required Library ----
+install.packages('ggplot2')
+install.packages('dplyr')
+install.packages('ggrepel')
+library(ggplot2)
+library(dplyr)
+library(ggrepel)
+
+
+### Read Data from File ----
+data <- read.csv('CS_02_02.csv', header = T)
+dim(data)
+head(data)
+summary(data)
+
+
+### Data Visualization ----
+pc1 <- ggplot(data, aes(x = CPI, y = HDI, color = Region))
+pc1 + geom_point()
+
+pc2 <- pc1 + geom_smooth(mapping = aes(linetype = 'r2'),
+                         method = 'lm',
+                         formula = y ~ x + log(x), se = F,
+                         color = 'red') #adding the trend line layer first (be plotted underneath the points)
+pc2 + geom_point()
+
+pc2 + geom_point(shape = 21, size = 4) #shape 21 is an open circle
+pc3 <- pc2 + geom_point(shape = 21, size = 4, stroke = 1.5, fill = "white")
+pc3
+
+#labelling points
+pointsToLabel <- c("Russia", "Venezuela", "Iraq", "Myanmar", "Sudan",
+                   "Afghanistan", "Congo", "Greece", "Argentina", "Brazil",
+                   "India", "Italy", "China", "South Africa", "Spain",
+                   "Botswana", "Cape Verde", "Bhutan", "Rwanda", "France",
+                   "United States", "Germany", "Britain", "Barbados", "Norway", "Japan",
+                   "New Zealand", "Singapore")  # separates points that should be labelled from points that should not be
+pc4 <- pc3 + geom_text(aes(label = Country), color = "gray20", data = dplyr::filter(data, Country %in% pointsToLabel))  # label these points
+pc4
+
+pc4 <- pc3 + geom_text_repel(aes(label = Country),
+                             color = "gray20",
+                             data = dplyr::filter(data, Country %in% pointsToLabel),
+                             force = 20,
+                             force_pull = 1,
+                             max.overlaps = 30)
+pc4
+
+#change the region labels and order
+data$Region <- factor(data$Region,
+                     levels = c("EU W. Europe",
+                                "Americas",
+                                "Asia Pacific",
+                                "East EU Cemt Asia",
+                                "MENA",
+                                "SSA"),
+                     labels = c("OECD",
+                                "Americas",
+                                "Asia &\nOceania",
+                                "Central &\nEastern Europe",
+                                "Middle East &\nnorth Africa",
+                                "Sub-Saharan\nAfrica"))  # change both the labels and order of the Region variable
+pc4$data <- data  # change the color legend
+pc4
+
+#add title and format axes
+pc5 <- pc4 +
+    scale_x_continuous(name = "Corruption Perceptions Index, 2011 (10=least corrupt)",
+                       limits = c(1, 10.2),
+                       breaks = 1:10) +
+    scale_y_continuous(name = "Human Development Index, 2011 (1=Best)",
+                       limits = c(0.2, 1.0),
+                       breaks = seq(0.2, 1.0, by = 0.1)) +
+    scale_color_manual(name = "",
+                       values = c("#24576D",
+                                  "#099DD7",
+                                  "#28AADC",
+                                  "#248E84",
+                                  "#F2583F",
+                                  "#96503F")) +
+    ggtitle("Corruption and Human development")
+pc5
+
+#theme settings (adjust some of the theme elements, and label the axes and legends)
+pc6 <- pc4 +
+    theme_minimal() +
+    theme(text = element_text(color = 'gray20'),
+          legend.position = c("top"),
+          legend.direction = "horizontal",
+          legend.justification = 0.1,
+          legend.text = element_text(size = 11, color = "gray10"),
+          axis.title = element_text(face = "italic"),
+          axis.title.x = element_text(vjust = -1, face = 'italic'),
+          axis.title.y = element_text(vjust = 2, face = 'italic'),
+          axis.ticks.y = element_blank(),
+          axis.ticks.x = element_line(size = 0.5, color = "black"),
+          axis.line.x.bottom = element_line(color = "gray40", size = 0.5),
+          axis.line.y = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_line(color = "gray50", size = 0.5),
+          panel.grid.major.x = element_blank()) +
+          scale_x_continuous(name = "Corruption Perceptions Index, 2011 (10=least corrupt)",
+                             limits = c(1, 10.2),
+                             breaks = 1:10) +
+          scale_y_continuous(name = "Human Development Index, 2011 (1=Best)",
+                             limits = c(0.2, 1.0),
+                             breaks = seq(0.2, 1.0, by = 0.1)) +
+          scale_color_manual(name = "",
+                             values = c("#24576D",
+                                        "#099DD7",
+                                        "#28AADC",
+                                        "#248E84",
+                                        "#F2583F",
+                                        "#96503F")) +
+          ggtitle("Corruption and Human development")
+pc6
+
+#add model R^2 and source note
+mR2 <- summary(lm(HDI ~ CPI + log(CPI), data = data))$r.squared  # fit model and pull out the R^2
+mR2 <- paste0(format(mR2 * 100, digits = 2), "%")  # the variance explained by the model represented by the trend line
+
+p <- ggplot(data,
+            mapping = aes(x = CPI, y = HDI)) +
+  geom_smooth(mapping = aes(linetype = "r2"),
+              method = "lm",
+              formula = y ~ x + log(x), se = FALSE,
+              color = "red") +
+  geom_point(mapping = aes(color = Region),
+             shape = 21,
+             size = 4,
+             stroke = 1.5,
+             fill = 'white') +
+  geom_text_repel(mapping = aes(label = Country, alpha = labels),
+                  color = "gray20",
+                  force = 20,
+                  force_pull = 1,
+                  max.overlaps = 105,
+                  data = transform(data,
+                                   labels = Country %in% c("Russia",
+                                                           "Venezuela",
+                                                           "Iraq",
+                                                           "Myanmar",
+                                                           "Sudan",
+                                                           "Afghanistan",
+                                                           "Congo",
+                                                           "Greece",
+                                                           "Argentina",
+                                                           "Italy",
+                                                           "Brazil",
+                                                           "India",
+                                                           "China",
+                                                           "South Africa",
+                                                           "Spain",
+                                                           "Cape Verde",
+                                                           "Bhutan",
+                                                           "Rwanda",
+                                                           "France",
+                                                           "Botswana",
+                                                           "France",
+                                                           "United States",
+                                                           "Germany",
+                                                           "Britain",
+                                                           "Barbados",
+                                                           "Japan",
+                                                           "Norway",
+                                                           "New Zealand",
+                                                           "Singapore"))) +
+  scale_x_continuous(name = "Corruption Perception Index, 2011 (10=least corrupt)",
+                     limits = c(1.0, 10.2),
+                     breaks = 1:10) +
+  scale_y_continuous(name = "Human Development Index, 2011 (1=best)",
+                     limits = c(0.2, 1.0),
+                     breaks = seq(0.2, 1.0, by = 0.1)) +
+  scale_color_manual(name = "",
+                     values = c("#24576D",
+                                "#099DD7",
+                                "#28AADC",
+                                "#248E84",
+                                "#F2583F",
+                                "#96503F"),
+                     guide = guide_legend(nrow = 1, order = 1, label.hjust = 0, label.vjust = 0.5)) +
+  scale_alpha_discrete(range = c(0, 1),
+                       guide = "none") +
+  scale_linetype_discrete(name = "",
+                 breaks = "r2",
+                 labels = list(bquote(R^2==.(mR2))),
+                 guide = guide_legend(override.aes = list(linetype = 1, size = 1, color = "red"), order = 2, label.hjust = 0, label.vjust = 0.5)) +
+  ggtitle("Corruption and human development") +
+  labs(caption = "Sources: Transparency International; UN Human Development Report") +
+  theme_bw() +
+  theme(text = element_text(color = "gray20"),
+        
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.y = element_line(color = "gray"),
+        axis.title.x = element_text(vjust = -1, face="italic"),
+        axis.title.y = element_text(vjust = 2, face="italic"),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_text(size = 10),
+        axis.text.x = element_text(size = 10),
+        axis.line.x.bottom = element_line(size = 0.5, color = 'gray40'),
+        legend.position = "top",
+        legend.direction = "horizontal",
+        legend.box = "horizontal",
+        legend.text = element_text(size = 12, hjust = 0, margin = margin(l = 0)),
+        plot.caption = element_text(hjust=0, margin = margin(t = 10)),
+        plot.title = element_text(size = 16, face = "bold"))
+p
